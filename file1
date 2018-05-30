@@ -1,0 +1,278 @@
+#include <stdio.h>
+#include <Windows.h>
+#include <stdbool.h>
+#include <math.h>
+#include <string.h>
+
+//#define FName "File.bin"
+#define MAX_POINTS 100
+
+char FName[20];
+
+//struktura na edna tochka
+typedef struct Point 
+{
+	float x;
+	float y;
+	float z;
+	char color[21]; 
+}Point;
+
+//funkciq za printirane na greshki
+void HandleErr(errno_t err)
+{
+	char msg[256];
+	strerror_s(msg, 100, err);
+
+	fprintf(stderr, msg);
+	printf("\n");
+
+	exit(EXIT_FAILURE);
+}
+
+//funkciq za otvarqne na fail
+FILE *OpenMyFile(char *mode)
+{
+	FILE *fp = NULL;
+
+	errno_t err = fopen_s(&fp, FName, mode);
+
+	if (err != 0)
+	{
+		HandleErr(err);
+	}
+
+	return fp;
+}
+
+//chistim ekrana
+void ClearScreen()
+{
+	system("pause");
+	system("cls");
+}
+
+//chistene na vhodniq bufer
+void ClearInputBuffer()
+{
+	while (getchar() != '\n');
+}
+
+//prinitrame menuto
+void ShowMenu() 
+{
+	printf("---------------------------------------------------\n");
+	printf("1. Read from file\n");
+	printf("2. Write to file\n");
+	printf("3. Print to screen\n");
+	printf("4. Calculate from begining\n");
+	printf("5. Add point to file\n");
+	printf("---------------------------------------------------\n");
+	printf("Your choice: ");
+}
+
+//printirane na greshka na ekrana
+void PrintErr(char *err)
+{
+	printf("\n%s\n\n", err);
+
+	ClearInputBuffer();
+
+	ClearScreen();
+}
+
+//vzimame vhod ot potrebitelq (short)
+bool GetInputUShort(unsigned short *input)
+{
+	if (scanf_s("%hd", input) != 1)
+	{
+		PrintErr("There was a problem with the input!");
+
+		return false;
+	}
+
+	printf("\n");
+
+	return true;
+}
+
+//vzimame vhod ot potrebitelq (string)
+bool GetInputStr(char *input, int size)
+{
+	ClearInputBuffer();
+
+	if (scanf_s("%[^\n]%*c", input, size) != 1)
+	{
+		PrintErr("There was a problem with the input!");
+
+		return false;
+	}
+
+	printf("\n");
+
+	return true;
+}
+
+//Printirane na tochka na ekrana
+void PrintPoint(Point p)
+{
+	printf("X:%f Y:%f  Z: %f\n", p.x, p.y, p.z);
+	printf("Color: %s\n", p.color);
+	printf("\n");
+}
+
+//printirane na vsichki tochki na ekrana
+void PrintAllPoints(Point points[MAX_POINTS], unsigned short pointsCount)
+{
+	for (int i = 0; i < pointsCount; i++)
+	{
+		PrintPoint(points[i]);
+	}
+}
+
+//Suzdavane na tochka
+Point CreatePoint()
+{
+	Point p;
+
+	printf("Enter data for the new Point:\n\n");
+
+	printf("Enter X:  ");
+	scanf_s("%f", &p.x);
+
+	printf("Enter Y:  ");
+	scanf_s("%f", &p.y);
+
+	printf("Enter Z:  ");
+	scanf_s("%f", &p.z);
+
+	ClearInputBuffer();
+	printf("Enter color: ");
+	scanf_s("%[^\n]%*c", p.color, 20);
+
+	return p;
+}
+
+//dobavqne na tochka vuv fail
+void AddPointToFile()
+{
+	Point p = CreatePoint();
+
+	FILE *fp = OpenMyFile("ab");
+
+	if (fwrite(&p, sizeof(Point), 1, fp) != 1)
+		printf("Error in file writing.\n");
+
+	fclose(fp);
+}
+
+//chetene ot faila
+void ReadFromFile(Point points[MAX_POINTS], unsigned short *pointsCount)
+{
+	FILE *fp = OpenMyFile("rb");
+
+	Point point;
+	*pointsCount = 0;
+
+	while (fread(&point, sizeof(Point), 1, fp))
+	{
+		points[*pointsCount] = point;
+		(*pointsCount)++;
+	}
+
+	fclose(fp);
+}
+
+//zapisvame vsichki tochki vuv faila
+void WriteAllPointsToFile(Point points[MAX_POINTS], unsigned short pointsCount)
+{
+	FILE *fp = OpenMyFile("wb");
+
+	fwrite(points, sizeof(Point), pointsCount, fp);
+
+	fclose(fp);
+}
+
+//calculate distance from zero
+double GetDistanceFromOrigin(Point p)
+{
+	return sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+}
+
+//print all calculated distances
+void GetDistances(Point points[MAX_POINTS], unsigned short pointsCount)
+{
+	double tempDist = 0.0;
+
+	for (unsigned short i = 0; i < pointsCount; i++)
+	{
+		tempDist = GetDistanceFromOrigin(points[i]);
+		printf("Point %d distance from zero: %lf\n", i + 1, tempDist);
+	}
+
+	printf("\n");
+}
+
+//dobavqne na 5 tochki vuv faila
+void AddDummy()
+{
+	FILE *fp = OpenMyFile("wb");
+
+	Point p1 = { 10, 20, 30, "red" };
+	Point p2 = { 20, 30, 10, "blue" };
+	Point p3 = { 30, 40, 20, "green" };
+	Point p4 = { 40, 50, 40, "yellow" };
+	Point p5 = { 50, 60, 50, "red" };
+
+	fwrite(&p1, sizeof(Point), 1, fp);
+	fwrite(&p2, sizeof(Point), 1, fp);
+	fwrite(&p3, sizeof(Point), 1, fp);
+	fwrite(&p4, sizeof(Point), 1, fp);
+	fwrite(&p5, sizeof(Point), 1, fp);
+
+	fclose(fp);
+}
+
+void main(int argc, char *argv[])
+{	
+	//argv[0] = program name
+	//argv[1] = file name
+	if (argc != 2)
+	{
+		printf("Error with file names.");
+		return;
+	}
+
+	strcpy_s(FName, 20, argv[1]);
+
+	//AddDummy();
+
+	Point points[MAX_POINTS];
+	unsigned short pointsCount = 0;
+
+	ReadFromFile(points, &pointsCount);
+
+	unsigned short input = 0;
+
+	while (1)
+	{
+		ShowMenu();
+		if (GetInputUShort(&input) == false)
+			continue;
+
+		switch (input)
+		{
+		case 1: ReadFromFile(points, &pointsCount); break;
+		case 2: WriteAllPointsToFile(points, pointsCount); break;
+		case 3: PrintAllPoints(points, pointsCount); break;
+		case 4: GetDistances(points, pointsCount); break;
+		case 5: AddPointToFile(); break;
+		default:
+			break;
+		}
+
+		ClearScreen();
+	}
+
+	_fcloseall();
+}
